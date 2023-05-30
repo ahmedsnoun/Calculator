@@ -9,7 +9,7 @@ prompt:	db	" > "	; Size = 3
 nl:	db	10	; New line code
 
 	section	.bss
-tmp_int:	resw	1	; Reserver a data word to save temporary integer
+tmp_int:	resb	1	; Reserver a data word to save temporary integer
 
 	section .text
 print_nl:
@@ -41,6 +41,7 @@ print_text:
 	; Save used registers
 	push	rax
 	push	rdx
+	push	rdi
 
 	; Syscall specs
 	; (1) sys_write(int file_dest, char *buf, size_t buf_size)
@@ -52,6 +53,7 @@ print_text:
 	syscall
 
 	; Restore used registers
+	pop	rdi
 	pop	rdx
 	pop	rax
 
@@ -67,8 +69,30 @@ print_int:
 	;      rdi will be ERASED !!!	|
 	; ----------------------------- /
 
+	; Preserve used register
+	push	rax
+	push	rcx
+	push	rdx
+	push	rsi
+	push	rdi
+	push	r11
+
+	call	_print_int
+
+	; Restore register
+	pop	r11
+	pop	rdi
+	pop	rsi
+	pop	rdx
+	pop	rcx
+	pop	rax
+
+	ret
+
+_print_int:
+	; Don't call me, use print_int instead
 	cmp	rdi, 0
-	je	done		; End recursion here as nothing left to display, yes if input is 0 nothing is dislpayed.
+	je	done		; End recursion here as nothing left to display, yes if input is 0 nothing is displayed.
 
 	mov	rcx, 10
 	mov	rdx, 0		; Prevent div from crashing
@@ -77,13 +101,13 @@ print_int:
 	mov	rdi, rax	; Update number to display
 
 	; Recursive is magic !
-	push	rdx		; Save the current cha to display
-	call	print_int
+	push	rdx		; Save the current char to display
+	call	_print_int
 	pop	rdx		; Here we end recursion and so we start printing our numbers
 
 	; Convert int to it's char ASCII Code and display it
 	add	rdx, 48
-	mov	[tmp_int], rdx	; Store char to display
+	mov	byte [tmp_int], dl	; Store char to display
 
 	mov	rsi, tmp_int
 	mov	rdi, 1		; Only 1 char to display
@@ -116,8 +140,9 @@ read_text:
 
 	; Preserve used register
 	push	rax
-	push	rdx
 	push	rdi
+	push	rsi
+	push	rdx
 
 	; Syscall specs
 	; (O) sys_read(int file_dest, char *buf, size_t buf_size)
@@ -129,8 +154,9 @@ read_text:
 	syscall
 
 	; Restore used registers
-	pop	rdi
 	pop	rdx
+	pop	rsi
+	pop	rdi
 	pop	rax
 
 	ret
